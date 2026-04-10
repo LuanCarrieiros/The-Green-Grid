@@ -1,0 +1,387 @@
+O QUE FOI FEITO — TI6 / The Green Grid
+=======================================
+
+PROBLEMA ORIGINAL
+-----------------
+O notebook green_grid.ipynb rodava tudo em uma única passagem, com os 3 modelos
+"paralelizados" via ThreadPoolExecutor. Resultado:
+
+  - 12+ horas sem nenhuma forma de retomar se interrompido
+  - Queda de energia no epoch 7 = perda total do progresso
+  - ThreadPoolExecutor em CPU não ajuda de verdade: o GIL do Python bloqueia
+    threads para código CPU-bound. O ganho era mínimo (~10-20% no melhor caso)
+  - Uma única célula de treino para os 3 modelos tornava impossível saber qual
+    travou ou retomar só um deles
+
+O QUE FOI REORGANIZADO
+-----------------------
+
+1. CHECKPOINT POR ÉPOCA (mudança principal)
+   Cada treino agora salva o estado completo ao final de CADA época:
+     - model_state_dict
+     - optimizer_state_dict
+     - scheduler_state_dict
+     - histórico de métricas (train_loss, train_acc, val_acc)
+     - melhor val_acc até agora
+
+   Se a energia cair no meio do epoch 7 do treino "color", ao reiniciar
+   o notebook e re-executar a célula 12, ela detecta model_color_resume.pt
+   e continua do epoch 8. O trabalho dos epochs 1-6 não é perdido.
+
+2. MARCADORES "DONE" (skip-if-exists)
+   Quando um treino termina completamente, o arquivo _resume.pt é apagado
+   e criado um _DONE.pt com o histórico final. Da próxima vez que a célula
+   rodar, ela detecta o DONE e pula automaticamente — exatamente como o
+   projeto da IC faz com os arquivos .pkl.
+
+   Arquivos de controle:
+     checkpoints/model_color_DONE.pt      → treino color completo, pula
+     checkpoints/model_grayscale_DONE.pt  → pula
+     checkpoints/model_segmented_DONE.pt  → pula
+     checkpoints/ensemble_meta.pkl        → meta-classificador já treinado, pula
+     checkpoints/{train,test}_probs_{ver}.npy → probabilidades já calculadas, pula
+
+3. CÉLULAS SEPARADAS POR MODELO
+   Antes: 1 célula com ThreadPoolExecutor para os 3 modelos
+   Depois: 3 células independentes (células 12, 13, 14 — uma por versão)
+
+   Vantagem: se "color" travar na energia, "grayscale" e "segmented" podem
+   ser retomados individualmente na mesma sessão.
+
+4. LOADER "TRAIN_EVAL" SEPARADO
+   O original tinha um bug sutil: ao calcular probabilidades do train set
+   para o ensemble, usava o loader com augmentation (flip, rotation, jitter).
+   Augmentation gera previsões diferentes a cada passagem — ruído para o
+   meta-classificador.
+
+   Agora há um 3º loader por versão (train_eval) com eval_transforms
+   (sem augmentation), usado exclusivamente para calcular as features do ensemble.
+
+5. EDA E PLOTS: SKIP-IF-EXISTS
+   Todas as visualizações verificam se o PNG já existe antes de gerar.
+   Poupa ~3-5 minutos em re-execuções.
+
+6. PROBABILIDADES SEPARADAS POR VERSÃO (.npy)
+   Os outputs softmax de cada modelo no train e test set são salvos em
+   arquivos .npy individuais. Isso permite retreinar só o ensemble (célula 20)
+   sem precisar carregar os 3 modelos grandes na memória novamente.
+
+ESTRUTURA DE CHECKPOINTS
+------------------------
+checkpoints/
+  model_color_best.pt         → melhor epoch do treino color (por val_acc)
+  model_color_DONE.pt         → treino completo + histórico
+  model_color_resume.pt       → estado do último epoch (existe só durante treino)
+  model_grayscale_best.pt
+  model_grayscale_DONE.pt
+  model_grayscale_resume.pt
+  model_segmented_best.pt
+  model_segmented_DONE.pt
+  model_segmented_resume.pt
+  train_probs_color.npy       → outputs softmax no train set (sem augmentation)
+  train_probs_grayscale.npy
+  train_probs_segmented.npy
+  test_probs_color.npy        → outputs softmax no test set
+  test_probs_grayscale.npy
+  test_probs_segmented.npy
+  train_labels.npy            → labels reais do train set
+  test_labels.npy             → labels reais do test set
+  ensemble_meta.pkl           → meta-classificador LogisticRegression
+
+ORDEM DE EXECUÇÃO (células em ordem)
+-------------------------------------
+  1   Imports
+  2   Caminhos e hiperparâmetros
+  3   Device e seed
+  4   Classes do dataset (38 classes)
+  5   Classe PlantVillageDataset
+  6   EDA — distribuição por cultura (pula se PNG existe)
+  7   EDA — comparação de versões (pula se PNG existe)
+  8   Filtro ExG — demonstração (pula se PNG existe)
+  9   Transforms e DataLoaders (3 loaders por versão: train, train_eval, val)
+  10  Modelo + funções de treino + função run_training
+  12  Treino COLOR   (retoma se interrompido; pula se DONE)
+  13  Treino GRAYSCALE (idem)
+  14  Treino SEGMENTED (idem)
+  15  Carrega melhores modelos (_best.pt)
+  16  Curvas de aprendizado (pula se PNG existe)
+  17  Avaliação individual dos 3 modelos
+  18  Heatmap de métricas (pula se PNG existe)
+  19  Calcula probabilidades para ensemble (pula se .npy existe)
+  20  Treina meta-classificador (pula se .pkl existe)
+  21  Gráfico final de comparação (pula se PNG existe)
+  22  Matriz de confusão (pula se PNG existe)
+  23  Resposta à questão de pesquisa
+
+O QUE NÃO FOI ALTERADO
+-----------------------
+  - Arquitetura do modelo (ResNet-18 transfer learning, só FC treinável)
+  - Hiperparâmetros (IMG_SIZE=224, BATCH_SIZE=32, NUM_EPOCHS=10, LR=1e-3)
+  - Estratégia de ensemble (LogisticRegression sobre as 114 features softmax)
+  - Métricas avaliadas (acurácia, f1_macro, precisão, recall, acurácia balanceada)
+  - Estrutura de diretórios dos dados (PlantVillage-completo/)
+  - Formato dos arquivos de split (raw/<version>/<classe>/<arquivo>)
+
+================================================================================
+SEGUNDA RODADA DE MUDANÇAS (31/03/2026)
+================================================================================
+
+CONTEXTO
+--------
+Os 3 modelos foram treinados com sucesso via notebook (checkpoints salvos em
+checkpoints_ipynb/ — renomeado para distinguir do script). Problemas encontrados
+durante a execução levaram a várias correções no notebook e à criação de train.py.
+
+PROBLEMAS ENCONTRADOS E CORREÇÕES NO NOTEBOOK
+----------------------------------------------
+
+1. CÉLULA 12 (treino) TRAVAVA MESMO COM DONE FILES
+   Problema: o Ray criava os 3 actors (rodava __init__ completo com DataLoaders)
+   antes de detectar os DONE files dentro do train(). Com Windows + Jupyter,
+   isso travava indefinidamente.
+   Fix: check de DONE files ANTES de criar qualquer actor Ray. Se todos existem,
+   carrega históricos direto dos DONE.pt e define trainers = None.
+
+2. NUM_WORKERS=4 TRAVAVA NO WINDOWS + JUPYTER
+   Problema: multiprocessing do DataLoader exige if __name__ == '__main__' que
+   o Jupyter não tem. GPU e CPU ficavam em <10% — gargalo era I/O single-thread.
+   Fix: NUM_WORKERS=0 no notebook para evitar travamento.
+
+3. CÉLULA 15 (curvas): histories não definido após reinício de kernel
+   Fix: carrega histories dos DONE.pt automaticamente se não estiver no escopo.
+   Também trocado dir() por globals() para funcionar corretamente em notebooks.
+
+4. CÉLULA 18 (probabilidades): travou por horas via Ray actor
+   Problema: Ray actor do segmented bloqueou após color e grayscale terminarem.
+   Fix: removido Ray da célula de probabilidades — cálculo local direto.
+
+5. ENSEMBLE: ValueError ao concatenar arrays de tamanhos diferentes
+   Problema: os 3 splits têm filenames completamente diferentes entre versões
+   (UUIDs distintos), tornando impossível alinhar por imagem para stacking.
+     color:     43.596 train
+     grayscale: 43.203 train
+     segmented: 42.984 train
+   Fix: abandonado LogisticRegression (stacking). Adotado ensemble por MÉDIA
+   DE SOFTMAX — todos os 3 modelos avaliam o mesmo color_test.txt, as
+   probabilidades são calculadas e a média é tirada por classe.
+
+6. AVALIAÇÃO INDIVIDUAL: test sets inconsistentes
+   Problema: cada modelo era avaliado no seu próprio test set (versão específica),
+   mas o ensemble usava color_test.txt — comparação injusta.
+   Fix: todos os 3 modelos individuais agora avaliam no color_test.txt também.
+
+RESULTADO FINAL DO NOTEBOOK
+----------------------------
+  color        acc=0.9476  (melhor individual)
+  grayscale    acc=?       (avaliado em color_test)
+  segmented    acc=?       (avaliado em color_test)
+  ensemble     acc=0.9303  (média de softmax)
+  Conclusão: ensemble NÃO superou o melhor modelo individual (-1.73 pp)
+
+CRIAÇÃO DO SCRIPT train.py
+---------------------------
+Motivação: NUM_WORKERS=0 no notebook causou gargalo severo de I/O (GPU <10%).
+Para o cluster de 2 nós, é necessário script .py onde num_workers=4 funciona.
+
+Diferenças do train.py em relação ao notebook:
+  - NUM_WORKERS = 4 (funciona em script .py no Windows)
+  - num_gpus=1 por actor (com 2 PCs, cada actor ocupa 1 GPU inteira)
+  - Argumento --address para conectar ao cluster: python train.py --address=auto
+  - Checkpoints salvos em checkpoints/ (separado do checkpoints_ipynb/ do notebook)
+  - Pergunta de pesquisa atualizada: foco em tempo de treinamento distribuído
+    além da comparação de acurácia ensemble vs individual
+
+PRÓXIMOS PASSOS
+---------------
+  - Instalar ambiente (.venv + requirements.txt) no segundo PC
+  - Copiar dataset PlantVillage-completo para o segundo PC
+  - Rodar: ray start --head no PC1, ray start --address=<IP>:6379 no PC2
+  - Medir tempo de treinamento com 1 nó vs 2 nós
+  - Comparar GPU/CPU utilization com NUM_WORKERS=4 vs 0
+
+================================================================================
+TERCEIRA RODADA DE MUDANÇAS (10/04/2026)
+================================================================================
+
+CONTEXTO
+--------
+Reunião com o orientador prevista. Necessidade de ter uma apresentação do estado
+atual do projeto e de adicionar mais experimentos ao pipeline.
+
+O QUE FOI FEITO
+---------------
+
+1. APRESENTAÇÃO EM REVEAL.JS (apresentacao.html)
+   Criado arquivo HTML com apresentação completa usando Reveal.js via CDN
+   (sem instalação, requer internet). 20 slides com auto-animate em cadeia:
+
+   Estrutura dos slides:
+     - Título → Problema (título encolhe com auto-animate)
+     - Dataset intro → detalhes (números surgem)
+     - Modelo intro → detalhes (por que ResNet-18)
+     - Paralelismo: nível 3 → +nível 2 → +nível 1 (um por slide)
+     - Checkpoint intro → detalhes (história da queda de energia)
+     - Ensemble intro → detalhes (por que média e não stacking)
+     - Resultados intro (94,76% grande) → tabela completa
+     - O que falta (grid 2 colunas)
+     - Pergunta de pesquisa → resposta parcial (NÃO / ⏳ ABERTO)
+     - Slide final com tags do projeto
+
+   Requisitos de design respeitados:
+     - font-size: max(18px, Xem) em todo o arquivo — garante mínimo 18px
+     - overflow: hidden nas seções — conteúdo nunca vaza abaixo do slide
+     - Tema escuro com verde (#4ade80) como cor principal
+
+2. STACKING EXPLORATORIO — train.py
+   Adicionado bloco de stacking após o softmax ensemble existente.
+
+   MOTIVAÇÃO
+   O softmax ensemble é uma comparação justa (todos os modelos veem o mesmo
+   color_test.txt). Mas o stacking (LogisticRegression sobre as 114 features
+   softmax) era impossível antes porque os splits de treino das 3 versões têm
+   UUIDs distintos — impossível alinhar imagem a imagem.
+
+   SOLUÇÃO EXPLORATÓRIA
+   Todos os 3 modelos aceitam imagens RGB 224×224. Portanto é possível rodar
+   grayscale e segmented em imagens coloridas (input "errado") para gerar
+   meta-features alinhadas:
+
+     color_train.txt → modelo color    → probs (N_train, 38) ┐
+     color_train.txt → modelo grayscale → probs (N_train, 38) ┼→ X_train (N_train, 114)
+     color_train.txt → modelo segmented → probs (N_train, 38) ┘
+
+     LogisticRegression.fit(X_train, train_labels)
+
+     color_test.txt → 3 modelos → X_test (N_test, 114)
+     LogisticRegression.predict(X_test) → avalia vs test_labels_all
+
+   NÃO É UMA COMPARAÇÃO JUSTA porque grayscale e segmented recebem imagens
+   coloridas (diferente do seu treino). É declarado explicitamente no output
+   e no gráfico (barra "stacking*" com nota "não justo").
+
+   CHECKPOINT: resultado salvo em checkpoints/stacking_meta.pkl — skip se existe.
+
+   MUDANÇAS NO train.py:
+     - Adicionados imports: LogisticRegression (sklearn), joblib
+     - Bloco de stacking com skip-if-exists
+     - Gráfico final atualizado: 5 barras (color, grayscale, segmented,
+       softmax, stacking*) com asterisco na última
+     - Conclusão final imprime ganho de ambos os ensembles separadamente
+       com classificação (SIM / MARGINAL / NÃO / PROMISSOR)
+
+PRÓXIMOS PASSOS (atualizados)
+------------------------------
+  - Testar o bloco de stacking (ainda não rodou — adicionado em 10/04 sem testar)
+  - Instalar ambiente (.venv + requirements.txt) no segundo PC
+  - Copiar dataset PlantVillage-completo para o segundo PC
+  - Rodar: ray start --head no PC1, ray start --address=<IP>:6379 no PC2
+  - Medir tempo de treinamento com 1 nó vs 2 nós
+  - Comparar GPU/CPU utilization com NUM_WORKERS=4 vs 0
+
+================================================================================
+QUARTA RODADA DE MUDANÇAS (10/04/2026)
+================================================================================
+
+CONTEXTO
+--------
+Continuação da sessão do mesmo dia. Bloco de stacking rodou e foi validado.
+Novo experimento adicionado: stacking com apenas color + segmented (comparação justa).
+Pasta reorganizada para subir no GitHub.
+
+RESULTADOS DO train.py (10/04/2026)
+-------------------------------------
+Todos os modelos avaliados no color_test.txt (10.709 imagens):
+
+  color        acc=0.9478  f1=0.9328  (melhor individual)
+  grayscale    acc=0.0890  f1=0.0444  (colapso — distribution shift: treinado em
+                                       monocromático, recebeu colorido)
+  segmented    acc=0.7703  f1=0.6879  (degradou — fundo presente no input,
+                                       mas folha colorida preservou sinal útil)
+  softmax      acc=0.9279  f1=0.9085  (-1.99 pp vs color — grayscale contaminou média)
+  stacking*    acc=0.9560  f1=0.9434  (+0.82 pp — NÃO JUSTO: grayscale/segmented
+                                       receberam input colorido fora da distribuição)
+  stacking c+s acc=0.9530  f1=0.9393  (+0.52 pp — JUSTO: color e segmented ambos
+                                       treinados e avaliados em imagens coloridas)
+
+  Resposta definitiva à pergunta de pesquisa (acurácia):
+    Softmax ensemble: NÃO supera o melhor individual.
+    Stacking color+seg: SIM — +0.52 pp, comparação justa.
+
+INSPEÇÃO DOS COEFICIENTES DO STACKING (3 modelos, não justo)
+--------------------------------------------------------------
+  A LogisticRegression aprendeu a pesar cada bloco de 38 features:
+    color:     0.4933  (~3x mais que grayscale)
+    grayscale: 0.1731  (quase ignorado — features eram lixo)
+    segmented: 0.3449  (~2x mais que grayscale)
+
+  Confirma que o stacking "não justo" funcionou apesar do grayscale porque
+  o meta-classificador aprendeu a dar peso ~0 para as features ruins.
+
+MUDANÇAS NO train.py
+---------------------
+1. STACKING SALVA O MODELO (não só o resultado)
+   Antes: checkpoints/stacking_meta.pkl continha apenas o dict de métricas.
+   Agora: também salva o objeto LogisticRegression:
+     checkpoints/stacking_model.pkl    → modelo dos 3 versões (não justo)
+     checkpoints/stacking_cs_model.pkl → modelo color+segmented (justo)
+
+2. STACKING COLOR+SEGMENTED (novo experimento)
+   Motivação: após inspecionar os coeficientes do stacking não justo,
+   ficou claro que grayscale contribuía minimamente. Novo bloco usa só
+   color e segmented (ambos com input colorido — comparação justa).
+
+   Implementação:
+     color_train.txt → modelo color    → probs (N_train, 38) ┐
+     color_train.txt → modelo segmented → probs (N_train, 38) ┘→ X_train (N_train, 76)
+     LogisticRegression.fit(X_train, train_labels)
+     color_test.txt → 2 modelos → X_test (N_test, 76)
+
+   Reutiliza train_probs_all do bloco anterior se já calculado;
+   recalcula só se necessário (ex: stacking antigo carregado do cache).
+
+   Checkpoint: checkpoints/stacking_cs_meta.pkl — skip se existe.
+
+3. GRÁFICO FINAL ATUALIZADO
+   De 5 para 6 barras: color, grayscale, segmented, softmax,
+   stacking* (não justo), stacking color+seg (justo, roxo).
+   Largura do figure aumentada de 9 para 11 para acomodar.
+
+REORGANIZAÇÃO DA PASTA (para o GitHub)
+----------------------------------------
+Estrutura anterior: todos os arquivos na raiz.
+Estrutura atual:
+
+  the-green-grid/
+  ├── .gitignore
+  ├── README.md
+  ├── requirements.txt
+  ├── train.py
+  ├── green_grid.ipynb
+  ├── results/               ← todos os PNGs gerados pelo train.py
+  │   ├── comparacao_final.png
+  │   ├── curvas_aprendizado.png
+  │   ├── eda_distribuicao.png
+  │   ├── eda_versoes.png
+  │   ├── exg_demo.png
+  │   ├── matriz_confusao_ensemble.png
+  │   └── metricas_heatmap.png
+  ├── apresentacoes/
+  │   ├── sprint1/           ← slides.html + sprint1.pdf + PDF com nome longo
+  │   └── sprint2/           ← apresentacao.html (Reveal.js, reunião orientador)
+  └── docs/
+      ├── enunciado.txt
+      ├── meutexto.txt
+      └── oquefiz.txt
+
+  .gitignore exclui: .venv/, PlantVillage-completo/, checkpoints/,
+  checkpoints_ipynb/, __pycache__/, .vscode/
+
+  train.py atualizado: BASE_DIR / 'results' → RESULTS_DIR para todos os PNGs.
+  RESULTS_DIR.mkdir(exist_ok=True) garante que a pasta é criada automaticamente.
+
+PRÓXIMOS PASSOS
+---------------
+  - Instalar ambiente (.venv + requirements.txt) no segundo PC
+  - Copiar dataset PlantVillage-completo para o segundo PC
+  - Rodar: ray start --head no PC1, ray start --address=<IP>:6379 no PC2
+  - Medir tempo de treinamento com 1 nó vs 2 nós
