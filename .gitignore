@@ -1,0 +1,22 @@
+# Ambiente virtual
+.venv/
+
+# Dataset (baixar via HuggingFace: mohanty/PlantVillage)
+PlantVillage-completo/
+PlantVillage/
+
+# Checkpoints (pesos dos modelos — arquivos grandes)
+checkpoints/
+checkpoints_ipynb/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
