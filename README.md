@@ -165,14 +165,12 @@ the-green-grid/
 
 ## Equipe
 
-| Nome |
-|---|
-| Arthur Clemente Machado |
-| Diego Moreira Rocha |
-| Felipe Vilhena Dias |
-| Iago Fereguetti Ribeiro |
-| Luan Barbosa Rosa Carrieiros |
-| Lucas Henrique Rocha Hauck |
+Arthur Clemente Machado  
+Diego Moreira Rocha  
+Felipe Vilhena Dias  
+Iago Fereguetti Ribeiro  
+Luan Barbosa Rosa Carrieiros  
+Lucas Henrique Rocha Hauck
 
 ---
 
@@ -180,10 +178,13 @@ the-green-grid/
 
 1. HUGHES, D. P.; SALATHÉ, M. **An open access repository of images on plant health to enable the development of mobile disease diagnostics.** *arXiv*, 1511.08060, 2015.
 2. MOHANTY, S. P.; HUGHES, D. P.; SALATHÉ, M. **Using deep learning for image-based plant disease detection.** *Frontiers in Plant Science*, v. 7, p. 1419, 2016.
-3. FERENTINOS, K. P. **Deep learning models for plant disease detection and diagnosis.** *Computers and Electronics in Agriculture*, v. 145, p. 311–318, 2018.
-4. BARBEDO, J. G. A. **Factors influencing the use of deep learning for plant disease recognition.** *Biosystems Engineering*, v. 172, p. 84–95, 2018.
-5. GONZALEZ, R. C.; WOODS, R. E. **Processamento Digital de Imagens.** 3. ed. Pearson, 2010.
-6. DEAN, J.; GHEMAWAT, S. **MapReduce: simplified data processing on large clusters.** *Communications of the ACM*, v. 51, n. 1, p. 107–113, 2008.
+3. HE, K. et al. **Deep Residual Learning for Image Recognition.** *IEEE CVPR*, 2016.
+4. FERENTINOS, K. P. **Deep learning models for plant disease detection and diagnosis.** *Computers and Electronics in Agriculture*, v. 145, p. 311–318, 2018.
+5. MORITZ, P. et al. **Ray: A Distributed Framework for Emerging AI Applications.** *USENIX OSDI*, 2018.
+6. GONZALEZ, R. C.; WOODS, R. E. **Processamento Digital de Imagens.** 3. ed. Pearson, 2010.
+7. THAPA, R. et al. **The Plant Pathology Challenge 2020 data set to classify foliar disease of apples.** *Applications in Plant Sciences*, 2020.
+8. DOSOVITSKIY, A. et al. **An Image is Worth 16×16 Words: Transformers for Image Recognition at Scale.** *ICLR*, 2021.
+9. BARBEDO, J. G. A. **Data fusion in agriculture: resolving ambiguities and closing data gaps using multi-resolution, multi-temporal and multi-spectral satellite imagery.** *Remote Sensing*, v. 14, n. 19, 2022.
 
 ---
 
