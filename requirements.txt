@@ -1,0 +1,15 @@
+# TI6 — The Green Grid
+# Instalar com:
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
+
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+
+ray[default]
+numpy==2.4.3
+Pillow==12.1.1
+scikit-learn==1.6.1
+matplotlib==3.10.8
+seaborn==0.13.2
+joblib==1.5.0
+ipykernel==6.29.5
