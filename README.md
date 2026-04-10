@@ -5,6 +5,13 @@
 
 ---
 
+## Apresentações
+
+- [Sprint 1 — PDF](https://github.com/LuanCarrieiros/The-Green-Grid/blob/main/apresentacoes/sprint1/sprint1.pdf)
+- [Sprint 2 — Apresentação interativa](https://luancarrieiros.github.io/The-Green-Grid/apresentacoes/sprint2/apresentacao.html)
+
+---
+
 ## Problema
 
 Doenças em plantas causam perdas de até 40% nas colheitas mundiais por ano (FAO). O diagnóstico manual depende de agrônomos especializados — mão de obra cara e escassa em regiões rurais. A detecção tardia agrava o problema.
