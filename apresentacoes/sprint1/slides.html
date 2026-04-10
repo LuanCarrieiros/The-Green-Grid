@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Sprint 1 — The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --gd: #1B5E20;
+    --gm: #2E7D32;
+    --ga: #43A047;
+    --gl: #A5D6A7;
+    --gp: #E8F5E9;
+    --am: #E65100;
+    --al: #FFF3E0;
+    --td: #1A1A1A;
+    --tm: #424242;
+    --ts: #757575;
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    background: #222;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    align-items: center;
+  }
+
+  @media print {
+    body { background: white; padding: 0; gap: 0; }
+    .slide { box-shadow: none; }
+  }
+
+  @page { margin: 0; }
+
+  /* ── SLIDE BASE ── */
+  .slide {
+    width: 297mm;
+    height: 210mm;
+    background: #fff;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+    break-after: page;
+    box-shadow: 0 6px 24px rgba(0,0,0,.4);
+    flex-shrink: 0;
+  }
+
+  /* ── HEADER ── */
+  .hd {
+    background: var(--gd);
+    color: #fff;
+    padding: 14px 40px 14px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .hd-title { font-size: 20pt; font-weight: 800; letter-spacing: -.4px; }
+  .hd-num   { font-size: 9pt; opacity: .6; letter-spacing: 2px; text-transform: uppercase; }
+
+  /* ── ACCENT BAR ── */
+  .accent-bar {
+    height: 4px;
+    background: linear-gradient(90deg, var(--ga) 0%, var(--gl) 100%);
+    flex-shrink: 0;
+  }
+
+  /* ── BODY ── */
+  .bd {
+    flex: 1;
+    padding: 26px 40px 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── FOOTER ── */
+  .ft {
+    background: var(--gp);
+    border-top: 2px solid var(--gl);
+    padding: 6px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .ft span { font-size: 8pt; color: var(--gm); }
+
+  /* ── UTILITIES ── */
+  .label {
+    font-size: 8pt; text-transform: uppercase;
+    letter-spacing: 3px; color: var(--ga);
+    font-weight: 700; margin-bottom: 6px;
+  }
+  .big-title {
+    font-size: 22pt; font-weight: 800;
+    color: var(--gd); line-height: 1.15;
+    margin-bottom: 20px;
+  }
+  .hl { color: var(--am); font-weight: 900; }
+
+  /* bullets */
+  .bullets { list-style: none; display: flex; flex-direction: column; gap: 13px; }
+  .bullets li {
+    display: flex; align-items: flex-start;
+    gap: 10px; font-size: 13.5pt; color: var(--td); line-height: 1.4;
+  }
+  .bullets li::before {
+    content: '';
+    width: 9px; height: 9px; min-width: 9px;
+    background: var(--ga); border-radius: 50%; margin-top: 6px;
+  }
+
+  /* two cols */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; flex: 1; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; flex: 1; }
+
+  /* stat box */
+  .stat-box {
+    background: var(--gp); border-left: 4px solid var(--ga);
+    border-radius: 8px; padding: 14px 18px;
+  }
+  .stat-box .sn { font-size: 34pt; font-weight: 900; color: var(--am); line-height: 1; }
+  .stat-box .sl { font-size: 11pt; color: var(--tm); margin-top: 3px; line-height: 1.3; }
+
+  /* card */
+  .card {
+    background: var(--gp); border: 1.5px solid var(--gl);
+    border-radius: 10px; padding: 18px 16px;
+    display: flex; flex-direction: column;
+  }
+  .card .card-icon { font-size: 24pt; margin-bottom: 8px; }
+  .card .card-title { font-size: 13pt; font-weight: 700; color: var(--gd); margin-bottom: 6px; }
+  .card .card-body  { font-size: 11pt; color: var(--tm); line-height: 1.45; }
+
+  /* flow */
+  .flow { display: flex; align-items: stretch; gap: 0; width: 100%; }
+  .flow-step {
+    flex: 1;
+    background: var(--gp); border: 1.5px solid var(--gl);
+    border-radius: 10px; padding: 14px 10px; text-align: center;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .flow-step .fi  { font-size: 26pt; margin-bottom: 8px; }
+  .flow-step .ft2 { font-size: 11pt; font-weight: 700; color: var(--gd); margin-bottom: 4px; }
+  .flow-step .fd  { font-size: 9.5pt; color: var(--tm); line-height: 1.3; }
+  .flow-arrow { font-size: 18pt; color: var(--ga); display: flex; align-items: center; padding: 0 5px; flex-shrink: 0; }
+
+  /* dataset cards */
+  .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .ds-card {
+    background: var(--gp); border-radius: 10px;
+    border: 1.5px solid var(--gl);
+    padding: 20px 14px; text-align: center;
+  }
+  .ds-card .dn { font-size: 30pt; font-weight: 900; color: var(--gd); line-height: 1; }
+  .ds-card .du { font-size: 12pt; font-weight: 700; color: var(--ga); }
+  .ds-card .dl { font-size: 10pt; color: var(--tm); margin-top: 6px; line-height: 1.3; }
+
+  /* refs */
+  .ref-list { list-style: none; counter-reset: rc; display: flex; flex-direction: column; gap: 11px; }
+  .ref-list li {
+    counter-increment: rc; font-size: 11pt; color: var(--td);
+    line-height: 1.5; padding-left: 30px; position: relative;
+  }
+  .ref-list li::before {
+    content: '[' counter(rc) ']';
+    position: absolute; left: 0;
+    color: var(--ga); font-weight: 700;
+  }
+
+  /* ==============================
+     SLIDE 1 — CAPA
+  ============================== */
+  .s1 { flex-direction: row; }
+
+  .s1-left {
+    flex: 1.1;
+    background: white;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 44px 48px;
+    position: relative; z-index: 2;
+  }
+  .s1-left .tag {
+    font-size: 10pt; text-transform: uppercase;
+    letter-spacing: 3px; color: var(--ga);
+    font-weight: 700; margin-bottom: 14px;
+  }
+  .s1-left .main-title {
+    font-size: 27pt; font-weight: 900;
+    color: var(--gd); line-height: 1.2;
+    margin-bottom: 14px;
+  }
+  .s1-left .sub {
+    font-size: 13pt; color: var(--tm);
+    line-height: 1.5; margin-bottom: 28px;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: var(--gp); border: 1.5px solid var(--gl);
+    color: var(--gd); padding: 6px 16px;
+    border-radius: 20px; font-size: 11pt; font-weight: 600;
+  }
+
+  .s1-right {
+    width: 38%;
+    background: linear-gradient(160deg, var(--gd) 0%, var(--ga) 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 30px;
+    clip-path: polygon(12% 0, 100% 0, 100% 100%, 0% 100%);
+  }
+  .s1-right .big-leaf { font-size: 80pt; line-height: 1; margin-bottom: 16px; }
+  .s1-right .course-name { font-size: 18pt; font-weight: 800; color: white; text-align: center; }
+  .s1-right .course-date { font-size: 11pt; color: rgba(255,255,255,.7); margin-top: 4px; }
+  .s1-right .dataset-badge {
+    margin-top: 18px; background: rgba(255,255,255,.15);
+    border: 1.5px solid rgba(255,255,255,.4);
+    color: white; padding: 8px 20px;
+    border-radius: 20px; font-size: 11pt; font-weight: 600;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 1 — IDENTIFICAÇÃO
+════════════════════════════════════════════ -->
+<div class="slide s1">
+
+  <div class="s1-left">
+    <div class="tag">Sprint 1 &nbsp;·&nbsp; P.A.I &amp; Computação Paralela e Distribuída</div>
+    <div class="main-title">The Green Grid:<br>Segmentação e Classificação Massiva de Doenças Vegetais</div>
+    <div class="sub">Processamento digital de imagens com paralelismo e distribuição em larga escala sobre o dataset PlantVillage</div>
+    <div class="chip-row">
+      <span class="chip">Arthur Clemente</span>
+      <span class="chip">Diego Moreira</span>
+      <span class="chip">Felipe Vilhena</span>
+      <div style="width:100%;height:0;"></div>
+      <span class="chip">Iago Fereguetti</span>
+      <span class="chip">Luan Barbosa</span>
+      <span class="chip">Lucas Hauck</span>
+    </div>
+  </div>
+
+  <div class="s1-right">
+    <div class="big-leaf">🌿</div>
+    <div class="course-name">Grupo 12</div>
+    <div class="course-date">Trabalho Interdisciplinar VI · 2026.1</div>
+    <div class="dataset-badge">📦 PlantVillage Dataset</div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 2 — PROBLEMATIZAÇÃO
+════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hd">
+    <span class="hd-title">Problematização</span>
+    <span class="hd-num">02 / 06</span>
+  </div>
+  <div class="accent-bar"></div>
+  <div class="bd">
+    <div class="two-col">
+
+      <!-- col esq -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="label">Contexto &amp; Motivação</div>
+        <ul class="bullets">
+          <li>Doenças em plantas são responsáveis por perdas massivas na cadeia alimentar global</li>
+          <li>O diagnóstico depende de agrônomos especializados — mão-de-obra escassa e cara</li>
+          <li>Inspeções manuais são lentas e sujeitas a erros em plantações de grande escala</li>
+          <li>A detecção tardia agrava o problema: quanto mais tempo passa, maior o estrago</li>
+        </ul>
+      </div>
+
+      <!-- col dir: stats + problema -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="label">O Problema</div>
+        <div class="stat-box">
+          <div class="sn">40%</div>
+          <div class="sl">das colheitas mundiais perdidas anualmente por pragas e doenças (FAO, 2023)</div>
+        </div>
+        <div class="stat-box">
+          <div class="sn">$220bi</div>
+          <div class="sl">em perdas econômicas anuais na agricultura global relacionadas a doenças vegetais</div>
+        </div>
+        <div class="card" style="margin-top:4px;">
+          <div class="card-title">🎯 Problema Específico</div>
+          <div class="card-body">Como identificar automaticamente, de forma rápida e escalável, doenças foliares em plantas a partir de imagens digitais?</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="ft">
+    <span>The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</span>
+    <span>Sprint 1 · Grupo 12 · 2026.1</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 3 — OBJETIVO E JUSTIFICATIVA
+════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hd">
+    <span class="hd-title">Objetivo e Justificativa</span>
+    <span class="hd-num">03 / 06</span>
+  </div>
+  <div class="accent-bar"></div>
+  <div class="bd">
+    <div class="two-col">
+
+      <!-- OBJETIVO -->
+      <div style="display:flex;flex-direction:column;">
+        <div class="label">Objetivo</div>
+        <div style="font-size:15pt;color:var(--gd);font-weight:700;line-height:1.35;margin-bottom:16px;">
+          Desenvolver um sistema automatizado de detecção de doenças foliares utilizando P.A.I com processamento paralelo e distribuído.
+        </div>
+        <ul class="bullets" style="gap:11px;">
+          <li>Aplicar filtros de segmentação (ExG) para isolar regiões de interesse nas folhas</li>
+          <li><span>Classificar imagens em <span class="hl">38 categorias</span> (doenças + saudável)</span></li>
+          <li><span>Distribuir as <span class="hl">54 mil imagens</span> entre nós de um cluster, reduzindo o tempo total de análise</span></li>
+        </ul>
+      </div>
+
+      <!-- JUSTIFICATIVA -->
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="label">Por que é relevante?</div>
+        <div class="card">
+          <div class="card-icon">🌍</div>
+          <div class="card-title">Impacto Social</div>
+          <div class="card-body">Segurança alimentar global ameaçada — automação democratiza o diagnóstico para pequenos produtores rurais</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <div class="card-title">Viabilidade Técnica</div>
+          <div class="card-body">Dataset público e rotulado disponível + técnicas de PDI consolidadas = solução implementável</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔀</div>
+          <div class="card-title">Escala com Paralelismo</div>
+          <div class="card-body">Processamento paralelo permite analisar grandes volumes de imagens em tempo real no campo</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="ft">
+    <span>The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</span>
+    <span>Sprint 1 · Grupo 12 · 2026.1</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 4 — METODOLOGIA
+════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hd">
+    <span class="hd-title">Metodologia</span>
+    <span class="hd-num">04 / 06</span>
+  </div>
+  <div class="accent-bar"></div>
+  <div class="bd">
+
+    <!-- FLUXO PDI -->
+    <div class="label" style="margin-bottom:10px;">Pipeline de Processamento Digital de Imagens</div>
+    <div class="flow" style="margin-bottom:16px;flex:1;">
+      <div class="flow-step">
+        <div class="fi">📥</div>
+        <div class="ft2">1. Aquisição</div>
+        <div class="fd">Carregamento das imagens do PlantVillage (JPG)</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fi">🔧</div>
+        <div class="ft2">2. Pré-processamento</div>
+        <div class="fd">Redimensionamento, normalização e conversão de espaço de cor</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fi">🟢</div>
+        <div class="ft2">3. Segmentação</div>
+        <div class="fd">Filtro ExG (Excess Green) para isolar a folha do fundo</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fi">🔍</div>
+        <div class="ft2">4. Extração</div>
+        <div class="fd">Features de textura, cor e morfologia das regiões afetadas</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fi">🏷️</div>
+        <div class="ft2">5. Classificação</div>
+        <div class="fd">Modelo de ML/DL — predição da doença ou saúde da planta</div>
+      </div>
+    </div>
+
+    <!-- PARALELISMO -->
+    <div class="label" style="margin-bottom:8px;">Estratégia de Paralelismo &amp; Distribuição</div>
+    <div class="three-col" style="flex:1;">
+      <div class="card" style="flex-direction:row;align-items:center;gap:14px;">
+        <div class="card-icon" style="margin-bottom:0;flex-shrink:0;">🗂️</div>
+        <div>
+          <div class="card-title">Particionamento dos Dados</div>
+          <div class="card-body">As 54 mil imagens são divididas em lotes e distribuídas igualmente entre os nós do cluster</div>
+        </div>
+      </div>
+      <div class="card" style="flex-direction:row;align-items:center;gap:14px;">
+        <div class="card-icon" style="margin-bottom:0;flex-shrink:0;">⚙️</div>
+        <div>
+          <div class="card-title">Processamento Paralelo</div>
+          <div class="card-body">Cada nó executa o pipeline P.A.I de forma independente no seu lote (modelo MapReduce)</div>
+        </div>
+      </div>
+      <div class="card" style="flex-direction:row;align-items:center;gap:14px;">
+        <div class="card-icon" style="margin-bottom:0;flex-shrink:0;">📊</div>
+        <div>
+          <div class="card-title">Agregação dos Resultados</div>
+          <div class="card-body">Os resultados de todos os nós são consolidados para avaliação de acurácia global do modelo</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="ft">
+    <span>The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</span>
+    <span>Sprint 1 · Grupo 12 · 2026.1</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 5 — DATASET
+════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hd">
+    <span class="hd-title">Dataset — PlantVillage</span>
+    <span class="hd-num">05 / 06</span>
+  </div>
+  <div class="accent-bar"></div>
+  <div class="bd">
+
+    <div class="label" style="margin-bottom:14px;">Visão Geral do Dataset</div>
+
+    <div class="ds-grid" style="margin-bottom:20px;">
+      <div class="ds-card">
+        <div class="dn">54.306</div>
+        <div class="du">imagens</div>
+        <div class="dl">Folhas rotuladas, split 80/20 pré-definido</div>
+      </div>
+      <div class="ds-card">
+        <div class="dn">38</div>
+        <div class="du">classes</div>
+        <div class="dl">26 doenças + 12 categorias saudáveis</div>
+      </div>
+      <div class="ds-card">
+        <div class="dn">14</div>
+        <div class="du">culturas</div>
+        <div class="dl">Tomate, laranja, soja, uva, milho e outras</div>
+      </div>
+      <div class="ds-card">
+        <div class="dn">3</div>
+        <div class="du">versões</div>
+        <div class="dl">Color · Grayscale · Segmented (fundo removido)</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="label" style="margin-bottom:10px;">Por que este dataset?</div>
+        <ul class="bullets" style="gap:9px;">
+          <li style="font-size:11pt;">Totalmente rotulado — ideal para aprendizado supervisionado</li>
+          <li style="font-size:11pt;">Open source: disponível no Kaggle e GitHub (sem restrições)</li>
+          <li style="font-size:11pt;">Volume adequado para validar a eficiência do processamento paralelo</li>
+          <li style="font-size:11pt;">Referência padrão em pesquisas de PDI para agricultura</li>
+        </ul>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:10px;">Imagens por cultura (contagem real)</div>
+        <div style="background:var(--gp);border-radius:10px;padding:12px 14px;border:1.5px solid var(--gl);display:flex;flex-direction:column;gap:5px;">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍅 Tomate</span><span>18.160</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:100%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍊 Laranja</span><span>5.507</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:30%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🌱 Soja</span><span>5.090</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:28%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍇 Uva</span><span>4.062</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:22%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🌽 Milho</span><span>3.852</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:21%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍎 Maçã</span><span>3.171</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:17%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍑 Pêssego</span><span>2.657</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:15%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🌶️ Pimentão</span><span>2.475</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:14%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🥔 Batata</span><span>2.152</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:12%;height:100%;background:var(--ga);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍒 Cereja</span><span>1.906</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:10%;height:100%;background:var(--gl);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🎃 Abóbora</span><span>1.835</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:10%;height:100%;background:var(--gl);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍓 Morango</span><span>1.565</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:9%;height:100%;background:var(--gl);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍒 Mirtilo</span><span>1.502</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:8%;height:100%;background:var(--gl);border-radius:4px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:8pt;color:var(--td);margin-bottom:2px;"><span>🍈 Framboesa</span><span>371</span></div>
+            <div style="height:6px;background:#e0e0e0;border-radius:4px;"><div style="width:2%;height:100%;background:var(--gl);border-radius:4px;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="ft">
+    <span>The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</span>
+    <span>Sprint 1 · Grupo 12 · 2026.1</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 6 — REFERÊNCIAS
+════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="hd">
+    <span class="hd-title">Referências Bibliográficas</span>
+    <span class="hd-num">06 / 06</span>
+  </div>
+  <div class="accent-bar"></div>
+  <div class="bd">
+
+    <ol class="ref-list">
+      <li>
+        HUGHES, D. P.; SALATHÉ, M. <strong>An open access repository of images on plant health to enable the development of mobile disease diagnostics.</strong> <em>arXiv preprint</em>, arXiv:1511.08060, 2015.
+      </li>
+      <li>
+        MOHANTY, S. P.; HUGHES, D. P.; SALATHÉ, M. <strong>Using deep learning for image-based plant disease detection.</strong> <em>Frontiers in Plant Science</em>, v. 7, p. 1419, 2016.
+      </li>
+      <li>
+        FERENTINOS, K. P. <strong>Deep learning models for plant disease detection and diagnosis.</strong> <em>Computers and Electronics in Agriculture</em>, v. 145, p. 311–318, 2018.
+      </li>
+      <li>
+        BARBEDO, J. G. A. <strong>Factors influencing the use of deep learning for plant disease recognition.</strong> <em>Biosystems Engineering</em>, v. 172, p. 84–95, 2018.
+      </li>
+      <li>
+        GONZALEZ, R. C.; WOODS, R. E. <strong>Processamento Digital de Imagens.</strong> 3. ed. São Paulo: Pearson, 2010.
+      </li>
+      <li>
+        DEAN, J.; GHEMAWAT, S. <strong>MapReduce: simplified data processing on large clusters.</strong> <em>Communications of the ACM</em>, v. 51, n. 1, p. 107–113, 2008.
+      </li>
+    </ol>
+
+    <div style="margin-top:18px;background:var(--gp);border-radius:8px;padding:12px 18px;border-left:4px solid var(--ga);">
+      <span style="font-size:9.5pt;color:var(--tm);">
+        📚 Bases consultadas: <strong>Google Scholar</strong>, <strong>IEEE Xplore</strong>, <strong>ScienceDirect</strong>, <strong>arXiv</strong>
+        &nbsp;·&nbsp; Termos: <em>"plant disease detection PDI"</em>, <em>"high-performance plant disease"</em>, <em>"distributed image processing agriculture"</em>
+      </span>
+    </div>
+
+  </div>
+  <div class="ft">
+    <span>The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</span>
+    <span>Sprint 1 · Grupo 12 · 2026.1</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 7 — OBRIGADO
+════════════════════════════════════════════ -->
+<div class="slide s1">
+
+  <div class="s1-left">
+    <div class="tag">Sprint 1 &nbsp;·&nbsp; Grupo 12 &nbsp;·&nbsp; 2026.1</div>
+    <div class="main-title">Obrigado!</div>
+    <div class="sub">The Green Grid: Segmentação e Classificação Massiva de Doenças Vegetais</div>
+  </div>
+
+  <div class="s1-right">
+    <div class="big-leaf">🌿</div>
+    <div class="course-name">Trabalho Interdisciplinar VI</div>
+    <div class="course-date">P.A.I &amp; Computação Paralela e Distribuída</div>
+  </div>
+
+</div>
+
+</body>
+</html>
