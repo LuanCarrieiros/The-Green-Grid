@@ -7,8 +7,8 @@
 
 ## Apresentações
 
-- [Sprint 1 — Slides (PDF-style)](apresentacoes/sprint1/slides.html)
-- [Sprint 2 — Slides (PDF-style)](apresentacoes/sprint2/slides.html)
+- [Sprint 1 — Slides (PDF)](https://github.com/LuanCarrieiros/The-Green-Grid/blob/main/apresentacoes/sprint1/sprint1.pdf)
+- [Sprint 2 — Slides (PDF)](https://github.com/LuanCarrieiros/The-Green-Grid/blob/main/apresentacoes/sprint2/Sprint%202%20%E2%80%94%20The%20Green%20Grid.pdf)
 
 ---
 
