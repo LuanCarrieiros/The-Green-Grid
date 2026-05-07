@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Sprint 2 — The Green Grid</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --g1:#1B5E20; --g2:#2E7D32; --g3:#388E3C; --g4:#43A047;
+  --g6:#A5D6A7; --g7:#C8E6C9; --g8:#E8F5E9;
+  --or:#E65100; --orl:#FFF3E0;
+  --bl:#1565C0; --bll:#E3F2FD;
+  --pu:#6A1B9A;
+  --re:#B71C1C; --tx:#1A1A1A; --tm:#4A4A4A; --ts:#757575;
+}
+body { font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; background:#111827; padding:32px; display:flex; flex-direction:column; gap:28px; align-items:center; }
+@media print { body{background:white;padding:0;gap:0;} .slide{box-shadow:none;} }
+@page { margin:0; size:297mm 210mm; }
+
+.slide { width:297mm; height:210mm; background:#fff; position:relative; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,.6); flex-shrink:0; }
+
+/* ── Header ── */
+.hd { background:var(--g1); color:#fff; padding:11px 36px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.hd-title { font-size:24pt; font-weight:700; }
+.hd-num   { font-size:12pt; background:rgba(255,255,255,.18); padding:3px 12px; border-radius:12px; letter-spacing:1px; }
+
+/* ── Accent stripe ── */
+.acc { height:3px; background:linear-gradient(90deg,var(--g4) 0%,var(--g6) 70%,transparent 100%); flex-shrink:0; }
+
+/* ── Body ── */
+.bd { flex:1; padding:16px 36px 12px; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Footer ── */
+.ft { background:var(--g8); border-top:1.5px solid var(--g7); padding:5px 36px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.ft span { font-size:12pt; color:var(--g2); }
+
+/* ── Section label ── */
+.lbl { font-size:11pt; font-weight:700; text-transform:uppercase; letter-spacing:3px; color:var(--g4); margin-bottom:8px; }
+
+/* ── Bullets ── */
+.bul { list-style:none; display:flex; flex-direction:column; gap:10px; }
+.bul li { display:block; padding-left:26px; position:relative; font-size:24pt; color:var(--tx); line-height:1.35; }
+.bul li .d { position:absolute; left:0; top:15px; width:9px; height:9px; background:var(--g4); border-radius:50%; }
+
+/* ── Cards ── */
+.card { background:var(--g8); border-left:4px solid var(--g4); border-radius:0 8px 8px 0; padding:10px 14px; }
+.ct { font-size:18pt; font-weight:700; color:var(--g1); margin-bottom:3px; }
+.cb { font-size:16pt; color:var(--tm); line-height:1.4; }
+
+/* ── Alert boxes ── */
+.al { padding:9px 14px; border-radius:0 8px 8px 0; font-size:18pt; line-height:1.4; }
+.al-g  { background:#d4edda; border-left:4px solid var(--g3); color:var(--g1); }
+.al-o  { background:var(--orl); border-left:4px solid var(--or); color:#7F3100; }
+.al-b  { background:var(--bll); border-left:4px solid var(--bl); color:#0D3C78; }
+.al-gr { background:#F5F5F5; border-left:4px solid #9E9E9E; color:#2E2E2E; }
+.al-r  { background:#FFEBEE; border-left:4px solid var(--re); color:var(--re); }
+
+/* ── Grid ── */
+.c2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.c3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.c4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; }
+
+/* ── Stat boxes ── */
+.stat { background:var(--g8); border:1.5px solid var(--g6); border-radius:10px; padding:12px 14px; }
+.sn { font-size:28pt; font-weight:900; color:var(--or); line-height:1; }
+.sl { font-size:15pt; color:var(--tm); margin-top:3px; line-height:1.3; }
+
+/* ── Objective boxes ── */
+.obj { border:2px solid var(--g6); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:7px; }
+.ol { font-size:11pt; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--g3); }
+.ot { font-size:18pt; color:var(--tx); line-height:1.4; }
+.or { padding:7px 10px; border-radius:6px; font-size:20pt; font-weight:700; text-align:center; }
+.or-g { background:#d4edda; color:var(--g1); }
+.or-o { background:var(--orl); color:var(--or); }
+
+/* ── Tables ── */
+table.t { width:100%; border-collapse:collapse; }
+table.t th { background:var(--g1); color:#fff; padding:7px 12px; font-size:15pt; text-align:left; font-weight:600; }
+table.t td { padding:6px 12px; font-size:14pt; color:var(--tx); border-bottom:1px solid var(--g7); }
+table.t tr:nth-child(even) td { background:var(--g8); }
+table.t tr.hl td { background:#d4edda; color:var(--g1); font-weight:700; }
+table.t .c { text-align:center; }
+
+/* ── Bar chart ── */
+.brow { display:flex; align-items:center; gap:10px; margin:5px 0; }
+.blbl { font-size:18pt; color:var(--tm); text-align:right; flex-shrink:0; }
+.btrk { flex:1; background:#e0e0e0; border-radius:4px; height:24px; overflow:hidden; }
+.bfil { height:100%; border-radius:4px; }
+.bval { font-size:18pt; font-weight:700; flex-shrink:0; width:76px; }
+
+/* ── Level boxes (parallelism) ── */
+.lvl { border-left:5px solid var(--g4); background:var(--g8); border-radius:0 8px 8px 0; padding:10px 15px; }
+.ll { font-size:11pt; text-transform:uppercase; letter-spacing:2px; color:var(--g4); font-weight:700; }
+.lt { font-size:20pt; font-weight:700; color:var(--g1); margin:2px 0; }
+.ld { font-size:16pt; color:var(--tm); line-height:1.35; }
+
+/* ── Pipeline flow ── */
+.flow { display:flex; align-items:stretch; }
+.fs { flex:1; background:var(--g8); border:1.5px solid var(--g6); border-radius:10px; padding:9px 7px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.fi  { font-size:22pt; margin-bottom:3px; }
+.ftt { font-size:15pt; font-weight:700; color:var(--g1); margin-bottom:2px; }
+.fd  { font-size:13pt; color:var(--tm); line-height:1.3; }
+.fa  { font-size:18pt; color:var(--g4); display:flex; align-items:center; padding:0 4px; flex-shrink:0; }
+
+/* ── References ── */
+.rfl { list-style:none; counter-reset:rc; display:flex; flex-direction:column; gap:7px; }
+.rfl li { counter-increment:rc; font-size:14pt; color:var(--tx); line-height:1.35; padding-left:30px; position:relative; }
+.rfl li::before { content:'[' counter(rc) ']'; position:absolute; left:0; color:var(--g4); font-weight:700; }
+
+/* ── Timeline ── */
+.tl  { display:flex; flex-direction:column; gap:10px; }
+.tlr { display:flex; align-items:stretch; gap:12px; }
+.tls { min-width:92px; color:white; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14pt; font-weight:700; padding:6px 8px; flex-shrink:0; }
+.tls.done   { background:var(--g4); }
+.tls.active { background:var(--or); }
+.tls.next   { background:#9E9E9E; }
+.tlc { flex:1; background:var(--g8); border:1.5px solid var(--g6); border-radius:6px; padding:8px 14px; }
+.tlc.active { border-color:var(--or); background:var(--orl); }
+.tltt { font-size:16pt; font-weight:700; color:var(--g1); }
+.tlc.active .tltt { color:var(--or); }
+.tldd { font-size:14pt; color:var(--tm); margin-top:3px; }
+.tldt { font-size:13pt; color:var(--ts); float:right; font-weight:600; }
+
+/* ══ CAPA ══ */
+.capa { flex-direction:row; }
+.cl { flex:1.2; display:flex; flex-direction:column; justify-content:center; padding:44px 46px; }
+.ctag  { font-size:13pt; text-transform:uppercase; letter-spacing:4px; color:var(--g4); font-weight:700; margin-bottom:12px; }
+.ctit  { font-size:42pt; font-weight:900; color:var(--g1); line-height:1.1; margin-bottom:10px; }
+.csub  { font-size:19pt; color:var(--tm); line-height:1.5; margin-bottom:22px; }
+.chips { display:flex; flex-wrap:wrap; gap:7px; }
+.chip  { background:var(--g8); border:1.5px solid var(--g6); color:var(--g1); padding:4px 13px; border-radius:20px; font-size:15pt; font-weight:600; }
+.cr { width:31%; background:linear-gradient(145deg,var(--g1) 0%,var(--g3) 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:34px 22px; clip-path:polygon(14% 0,100% 0,100% 100%,0% 100%); }
+.cleaf  { font-size:70pt; line-height:1; margin-bottom:14px; }
+.ccrs   { font-size:18pt; font-weight:800; color:white; text-align:center; }
+.cdate  { font-size:14pt; color:rgba(255,255,255,.7); margin-top:5px; }
+.cbadge { margin-top:13px; background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.4); color:white; padding:5px 15px; border-radius:20px; font-size:14pt; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- ══ S01: CAPA ══ -->
+<div class="slide capa">
+  <div class="cl">
+    <div class="ctag">Sprint 2 · Grupo 12 · 2026.1</div>
+    <div class="ctit">The Green Grid</div>
+    <div class="csub">Detecção de Doenças em Plantas<br>com Computação Distribuída</div>
+    <div class="chips">
+      <span class="chip">Arthur Clemente</span>
+      <span class="chip">Diego Moreira</span>
+      <span class="chip">Felipe Vilhena</span>
+      <span class="chip">Iago Fereguetti</span>
+      <span class="chip">Luan Carrieiros</span>
+      <span class="chip">Lucas Hauck</span>
+    </div>
+  </div>
+  <div class="cr">
+    <div class="cleaf">🌿</div>
+    <div class="ccrs">Trabalho Interdisciplinar VI</div>
+    <div class="cdate">PUC Minas · 2026.1</div>
+    <div class="cbadge">PlantVillage · 54k imagens</div>
+  </div>
+</div>
+
+<!-- ══ S02: CONTEXTUALIZAÇÃO E PROBLEMA ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Contextualização e Problema</span><span class="hd-num">02 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd" style="gap:12px;">
+    <div class="lbl">Motivação</div>
+    <ul class="bul" style="margin-bottom:6px;">
+      <li><div class="d"></div>Doenças vegetais causam até <strong>40% de perdas</strong> nas colheitas mundiais por ano (FAO, 2021)</li>
+      <li><div class="d"></div>Diagnóstico manual exige agrônomos especializados, recurso escasso em regiões rurais</li>
+      <li><div class="d"></div>Detecção tardia amplifica danos: sintomas visíveis apenas em estágio avançado</li>
+    </ul>
+    <div class="lbl">Delimitação do Cenário e Tarefa</div>
+    <div class="c3" style="gap:12px; flex-shrink:0;">
+      <div class="al al-o" style="font-size:15pt;">
+        <strong>Cenário: laboratorial controlado</strong><br>
+        Imagens PlantVillage com fundo branco uniforme, não representativo de condições de campo real.
+      </div>
+      <div class="al al-b" style="font-size:15pt;">
+        <strong>Tipo de tarefa:</strong> Classificação supervisionada multiclasse: 38 classes · 14 culturas · 224×224 px
+      </div>
+      <div class="al al-gr" style="font-size:15pt;">
+        <strong>Limitação reconhecida:</strong> generalização para campo (fundo variável, iluminação natural) é questão em aberto, discutida neste trabalho.
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S03: OBJETIVOS MENSURÁVEIS ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Objetivos Mensuráveis e Contribuição Técnica</span><span class="hd-num">03 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c3" style="margin-bottom:14px;">
+      <div class="obj">
+        <div class="ol">Objetivo 1 · Qualidade</div>
+        <div class="ot">Acurácia ≥ 90% em <em>color_test.txt</em><br>(10.709 imgs, 38 classes)</div>
+        <div class="or or-g">94,78% · atingido</div>
+      </div>
+      <div class="obj">
+        <div class="ol">Objetivo 2 · Paralelismo</div>
+        <div class="ot">Speedup ≥ 1,5×, Ray 2 nós comparado com baseline sequencial</div>
+        <div class="or or-o">1,41× · parcial<br><span style="font-size:14pt;font-weight:400;">2 GPUs para 3 actors</span></div>
+      </div>
+      <div class="obj">
+        <div class="ol">Objetivo 3 · Ensemble</div>
+        <div class="ot">Ensemble supera melhor modelo individual em comparação justa</div>
+        <div class="or or-g">+0,52 pp (stacking c+s)</div>
+      </div>
+    </div>
+    <div class="al al-b">
+      <strong>Contribuição técnica:</strong> medição empírica do speedup decomposto por nível de paralelismo (CUDA / DataLoader / Ray), aspecto raramente explorado na literatura de detecção de doenças vegetais, que costuma focar exclusivamente em acurácia.
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S04: DATASET ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Dataset: PlantVillage</span><span class="hd-num">04 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd" style="gap:16px;">
+    <div class="c4" style="flex-shrink:0;">
+      <div class="stat"><div class="sn">54k</div><div class="sl">imagens totais</div></div>
+      <div class="stat"><div class="sn">38</div><div class="sl">classes (26 doenças + 12 saudável)</div></div>
+      <div class="stat"><div class="sn">14</div><div class="sl">culturas distintas</div></div>
+      <div class="stat"><div class="sn">80/20</div><div class="sl">43.596 treino · 10.709 teste</div></div>
+    </div>
+    <div class="lbl">Estrutura do dataset</div>
+    <ul class="bul" style="flex-shrink:0;">
+      <li><div class="d"></div>3 versões: <strong>color · grayscale · segmented</strong> (segmentação ExG: 2G−R−B &gt; 0,1), com 1 Ray actor treinado por versão</li>
+      <li><div class="d"></div>Split 80/20 com proteção de <em>leaf_id</em>: a mesma folha não aparece em treino e teste · Fonte: Hughes &amp; Salathé (2015) · CC-BY-SA-3.0</li>
+    </ul>
+    <div class="lbl">Limitação conhecida</div>
+    <div class="al al-o" style="font-size:16pt; flex-shrink:0;">
+      <strong>Viés de fundo (Noyan, 2022):</strong> modelos treinados no PlantVillage caem de 99% para 31% em imagens in-the-wild. O fundo branco uniforme pode ser classificado pela CNN como feature discriminativa em vez da lesão.
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S05: REVISÃO DA LITERATURA ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Revisão da Literatura</span><span class="hd-num">05 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd" style="gap:12px;">
+    <div class="lbl">O que cada trabalho contribuiu para o projeto</div>
+    <div class="c2" style="flex:1; gap:12px;">
+      <div class="lvl">
+        <div class="ll">Mohanty et al. (2016) · referência seminal</div>
+        <div class="lt">TL AlexNet/GoogLeNet → 99% no PlantVillage</div>
+        <div class="ld">Estabelece o benchmark de acurácia no mesmo dataset e confirma a viabilidade de transfer learning; embasou a escolha do ResNet-18 com backbone pré-treinado ImageNet.</div>
+      </div>
+      <div class="lvl">
+        <div class="ll">Shoaib et al. (2023) · survey 135 artigos</div>
+        <div class="lt">Estado da arte: TL é o padrão dominante</div>
+        <div class="ld">Panorama das arquiteturas atuais (2015–2022); justifica o uso de backbone congelado como abordagem adequada para datasets de tamanho médio.</div>
+      </div>
+      <div class="lvl">
+        <div class="ll">Noyan (2022) · análise de viés de captura</div>
+        <div class="lt">99% no PlantVillage → 31% in-the-wild</div>
+        <div class="ld">Motivou a segmentação ExG para mitigar viés de fundo e a delimitação explícita do cenário como "laboratorial controlado" nos objetivos do projeto.</div>
+      </div>
+      <div class="lvl">
+        <div class="ll">Barbedo (2022) · representatividade de dados</div>
+        <div class="lt">Dados laboratoriais ≠ condições de campo real</div>
+        <div class="ld">Reforça a limitação reconhecida neste trabalho e justifica a validação em campo real prevista para o Sprint 3.</div>
+      </div>
+    </div>
+    <div class="al al-gr" style="font-size:14pt; flex-shrink:0;">
+      Acurácias acima de 94% em trabalhos relacionados: backbone fine-tuned completo, maior custo computacional. Nosso escopo é treino distribuído com medição empírica de speedup por nível de paralelismo.
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S06: ARQUITETURA ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Arquitetura: ResNet-18 com Transfer Learning</span><span class="hd-num">06 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c2" style="flex:1; gap:20px;">
+      <div>
+        <div class="lbl" style="margin-bottom:10px;">Especificação do modelo</div>
+        <div style="background:#f5f5f5;border-radius:8px;padding:13px 16px;font-family:monospace;font-size:14pt;line-height:1.7;color:var(--tx);border-left:4px solid var(--g4);">
+          Input: 224 × 224 × 3<br>
+          ↓ Conv1 (7×7, 64 ch, stride=2)<br>
+          ↓ MaxPool (3×3, stride=2)<br>
+          ↓ Layer1–4: 8 blocos residuais <span style="color:#9E9E9E;">← frozen</span><br>
+          &nbsp;&nbsp;&nbsp;64 → 128 → 256 → 512 canais<br>
+          ↓ AvgPool global → 512-dim<br>
+          ↓ <strong style="color:var(--g1);">FC: Linear(512 → 38) ← treináveis</strong><br>
+          Output: 38 logits → softmax
+        </div>
+        <div style="margin-top:10px;font-size:15pt;color:var(--tm);">
+          Parâmetros totais: <strong>11,2M</strong> &nbsp;|&nbsp; Treináveis: <strong>19.494</strong> (só FC)
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div class="lbl">Decisões e justificativas</div>
+        <div class="card">
+          <div class="ct">Backbone ImageNet congelado</div>
+          <div class="cb">Reduz overfitting num dataset de tamanho médio. Features pré-treinadas já capturam textura e bordas relevantes para lesões foliares.</div>
+        </div>
+        <div class="card">
+          <div class="ct">ResNet-18 (não VGG/InceptionV3)</div>
+          <div class="cb">11M vs 138M parâmetros, adequado ao hardware acadêmico. Conexões residuais previnem vanishing gradient mesmo com backbone congelado.</div>
+        </div>
+        <div class="card" style="border-left-color:var(--g3);">
+          <div class="ct">Resultado alcançado</div>
+          <div class="cb">color: 94,78% acc · F1=0,947 · BalAcc=0,947 · 38 classes · 10.709 imagens de teste</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S07: METODOLOGIA ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Metodologia: Pipeline de Processamento</span><span class="hd-num">07 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="flow" style="margin-bottom:14px; flex-shrink:0;">
+      <div class="fs"><div class="fi">📥</div><div class="ftt">Aquisição</div><div class="fd">PlantVillage<br>3 versões</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">⚙️</div><div class="ftt">Pré-proc.</div><div class="fd">Resize 224×224<br>Norm. ImageNet</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">🔬</div><div class="ftt">Segm. ExG</div><div class="fd">2G−R−B &gt; 0,1<br>máscara de folha</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">🧠</div><div class="ftt">ResNet-18</div><div class="fd">TL · FC 512→38<br>Adam + StepLR</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">🔗</div><div class="ftt">Ensemble</div><div class="fd">Stacking<br>LogReg meta</div></div>
+    </div>
+    <ul class="bul" style="flex:1;">
+      <li><div class="d"></div><strong>Data augmentation:</strong> flip horizontal, rotação ±15°, ColorJitter, para diversificar o domínio sem adicionar dados externos</li>
+      <li><div class="d"></div><strong>ExG mitiga viés de fundo:</strong> isola a folha do fundo uniforme, mas perde informação de cor da lesão</li>
+      <li><div class="d"></div><strong>Adam + StepLR:</strong> LR=1×10⁻³, decay 0,5× a cada 3 epochs, convergência estável em 10 epochs</li>
+      <li><div class="d"></div><strong>Meta-classificador:</strong> LogisticRegression (L2, C=1) treinada nas probabilidades softmax → features 76-dim (38+38)</li>
+    </ul>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S08: PARALELISMO ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Paralelismo em 3 Níveis</span><span class="hd-num">08 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd" style="gap:11px;">
+    <div class="lvl">
+      <div class="ll">Nível 3 · Distribuído · Ray Cluster</div>
+      <div class="lt">3 Ray Actors · 2 nós · 2 GPUs</div>
+      <div class="ld">Cada actor treina 1 versão independente (color / grayscale / segmented). Ray agenda por disponibilidade de GPU. Comunicação apenas na coleta dos resultados finais, sem overhead de gradiente entre actors.</div>
+    </div>
+    <div class="lvl">
+      <div class="ll">Nível 2 · Paralelo CPU · DataLoader</div>
+      <div class="lt">4 workers de I/O simultâneos por actor (sweet spot empírico)</div>
+      <div class="ld">Processos separados carregam e transformam imagens em paralelo enquanto a GPU processa o batch anterior (pipeline CPU/GPU). Benchmark: 4 workers → 2,05× speedup em 60 batches × 128 imagens.</div>
+    </div>
+    <div class="lvl">
+      <div class="ll">Nível 1 · Paralelo GPU · CUDA</div>
+      <div class="lt">Batch de 128 imagens processado em paralelo nos cores CUDA</div>
+      <div class="ld">Operações matriciais (forward + backward) paralelizadas automaticamente pelo PyTorch. <code>pin_memory=True</code> reduz latência de transferência CPU→GPU.</div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S09: RESULTADOS INDIVIDUAIS ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Resultados: Modelos Individuais</span><span class="hd-num">09 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c2" style="flex:1; gap:22px;">
+      <div style="display:flex;flex-direction:column;">
+        <div class="lbl" style="margin-bottom:12px;">Avaliação em color_test.txt · 10.709 imagens</div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;">
+          <div class="brow">
+            <div class="blbl" style="width:140px;font-size:20pt;">color</div>
+            <div class="btrk" style="height:44px;"><div class="bfil" style="width:94.78%;background:#43A047;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#43A047;width:90px;">94,78%</div>
+          </div>
+          <div class="brow">
+            <div class="blbl" style="width:140px;font-size:20pt;">segmented</div>
+            <div class="btrk" style="height:44px;"><div class="bfil" style="width:77.03%;background:#1565C0;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#1565C0;width:90px;">77,03%</div>
+          </div>
+          <div class="brow">
+            <div class="blbl" style="width:140px;font-size:20pt;">grayscale</div>
+            <div class="btrk" style="height:44px;"><div class="bfil" style="width:8.90%;background:#B71C1C;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#B71C1C;width:90px;">8,90%</div>
+          </div>
+          <div style="font-size:15pt;color:var(--ts);">
+            Métricas color: F1=0,947 · Precisão=0,949 · Recall=0,946 · BalAcc=0,947
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="al al-g" style="font-size:18pt;flex:1;">
+          <strong>color (94,78%):</strong> treinado e avaliado em RGB colorido. Melhor modelo individual, meta de 90% superada.
+        </div>
+        <div class="al al-r" style="font-size:18pt;flex:1;">
+          <strong>grayscale (8,90%) · distribution shift:</strong> treinado em escala de cinza, avaliado em imagens coloridas. Colapso total de generalização por incompatibilidade de domínio.
+        </div>
+        <div class="al al-b" style="font-size:18pt;flex:1;">
+          <strong>segmented (77,03%):</strong> ExG remove o fundo mas perde a cor da lesão. Acurácia intermediária, mais robusto a viés de background.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S10: ENSEMBLE ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Resultados: Ensemble</span><span class="hd-num">10 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c2" style="flex:1; gap:22px;">
+      <div style="display:flex;flex-direction:column;">
+        <div class="lbl" style="margin-bottom:12px;">Comparação em color_test.txt</div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;">
+          <div class="brow">
+            <div class="blbl" style="width:160px;font-size:20pt;">color (ref.)</div>
+            <div class="btrk" style="height:44px;"><div class="bfil" style="width:94.78%;background:#43A047;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#43A047;width:90px;">94,78%</div>
+          </div>
+          <div class="brow">
+            <div class="blbl" style="width:160px;font-size:20pt;">softmax ens.</div>
+            <div class="btrk" style="height:44px;"><div class="bfil" style="width:92.79%;background:#E65100;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#E65100;width:90px;">92,79%</div>
+          </div>
+          <div class="brow">
+            <div class="blbl" style="width:160px;font-size:18pt;">stacking 3 mod.*</div>
+            <div class="btrk" style="height:44px;"><div class="bfil" style="width:95.60%;background:#9E9E9E;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#9E9E9E;width:90px;">95,60%</div>
+          </div>
+          <div class="brow">
+            <div class="blbl" style="width:160px;font-size:20pt;font-weight:700;color:var(--pu);">stacking c+s</div>
+            <div class="btrk" style="height:44px;outline:2px solid rgba(106,27,154,.3);border-radius:4px;"><div class="bfil" style="width:95.30%;background:#6A1B9A;"></div></div>
+            <div class="bval" style="font-size:20pt;color:#6A1B9A;width:90px;">95,30%</div>
+          </div>
+          <div style="font-size:14pt;color:var(--ts);">* stacking 3 modelos: inclui modelo grayscale avaliado fora do seu domínio de treino</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="al al-g" style="font-size:18pt;flex:1;">
+          <strong>Stacking color+segmented (+0,52 pp):</strong> ambos treinados e avaliados em imagens coloridas. O meta-classificador extrai informação de textura complementar ao modelo color.
+        </div>
+        <div class="al al-o" style="font-size:18pt;flex:1;">
+          <strong>Softmax ensemble não supera:</strong> grayscale com distribution shift contamina a média de probabilidades, puxando o vetor para distribuição incorreta.
+        </div>
+        <div class="al al-gr" style="font-size:18pt;flex:1;">
+          <strong>Meta-classificador:</strong> LogisticRegression (L2, C=1) treinada nas 76 probabilidades softmax (38+38) dos modelos color e segmented.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S11: ESCALABILIDADE FORTE ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Escalabilidade Forte: Mesmo Volume, Mais Workers</span><span class="hd-num">11 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c2" style="flex:1; gap:22px;">
+      <div>
+        <div style="font-size:17pt;font-weight:700;color:var(--g1);margin-bottom:6px;">Nível 2: DataLoader Workers</div>
+        <div style="font-size:13pt;color:var(--ts);margin-bottom:8px;">60 batches × 128 imgs · GPU dedicada (benchmark isolado)</div>
+        <table class="t">
+          <thead><tr><th>Workers</th><th class="c">Tempo (s)</th><th class="c">Speedup</th><th class="c">Eficiência</th></tr></thead>
+          <tbody>
+            <tr><td>0 (serial)</td><td class="c">15,6</td><td class="c">—</td><td class="c">—</td></tr>
+            <tr><td>1</td><td class="c">17,1</td><td class="c">0,91×</td><td class="c">91%</td></tr>
+            <tr><td>2</td><td class="c">9,5</td><td class="c">1,64×</td><td class="c">82%</td></tr>
+            <tr class="hl"><td>4 ✅ sweet spot</td><td class="c">7,6</td><td class="c">2,05×</td><td class="c">51%</td></tr>
+            <tr><td>8</td><td class="c">8,2</td><td class="c">1,91×</td><td class="c">24%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-size:17pt;font-weight:700;color:var(--g1);margin-bottom:6px;">Nível 3: Ray Cluster · Treino Completo</div>
+        <div style="font-size:13pt;color:var(--ts);margin-bottom:8px;">3 modelos · 10 epochs · BATCH=128 · mesmo dataset</div>
+        <table class="t" style="margin-bottom:11px;">
+          <thead><tr><th>Configuração</th><th class="c">Tempo</th><th class="c">Speedup</th><th class="c">Eficiência</th></tr></thead>
+          <tbody>
+            <tr><td>1 nó (sequencial)</td><td class="c">28,1 min</td><td class="c">1,00×</td><td class="c">—</td></tr>
+            <tr class="hl"><td>2 nós (paralelo)</td><td class="c">20,0 min</td><td class="c">1,41×</td><td class="c">47%</td></tr>
+          </tbody>
+        </table>
+        <div class="al al-o" style="font-size:14pt;">
+          <strong>Eficiência 47%:</strong> 2 GPUs para 3 actors; 1 actor aguarda GPU livre. A fração serial de agendamento limita o ganho máximo.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S12: ESCALABILIDADE FRACA ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Escalabilidade Fraca: Trabalho Proporcional aos Workers</span><span class="hd-num">12 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c2" style="flex:1; gap:22px;">
+      <div>
+        <div class="lbl" style="margin-bottom:10px;">Ray Actors: Análise</div>
+        <table class="t" style="margin-bottom:12px;">
+          <thead><tr><th>Actors</th><th>Trabalho</th><th class="c">T/actor</th><th class="c">Efic. fraca</th></tr></thead>
+          <tbody>
+            <tr><td>1 actor</td><td>1 versão (color)</td><td class="c">~9,4 min</td><td class="c">100%</td></tr>
+            <tr class="hl"><td>3 actors</td><td>3 versões distintas</td><td class="c">~9,4 min</td><td class="c">~100%</td></tr>
+          </tbody>
+        </table>
+        <div class="al al-g" style="font-size:15pt;">
+          <strong>Eficiência fraca ≈ 100%:</strong> cada actor processa 1 versão independente. Não há comunicação de gradientes nem sincronização entre actors durante o treino.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div class="lbl">Interpretação</div>
+        <div class="card">
+          <div class="ct">Modelo embarrassingly parallel</div>
+          <div class="cb">As 3 versões são tarefas totalmente independentes. O tempo por actor depende só da carga local, sem crescer com o número de workers.</div>
+        </div>
+        <div class="card" style="border-left-color:var(--bl);">
+          <div class="ct">Contraste com a escalabilidade forte</div>
+          <div class="cb">Fraca ≈ 100% confirma que o design é correto. A forte abaixo de 100% se deve à contenção de hardware (2 GPUs para 3 actors), não ao algoritmo.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S13: LIMITAÇÕES E GENERALIZAÇÃO ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Limitações: Viés de Background e Generalização</span><span class="hd-num">13 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="lbl" style="margin-bottom:8px;">Problemas reconhecidos</div>
+    <ul class="bul" style="margin-bottom:12px;">
+      <li><div class="d"></div><strong>Viés de fundo controlado:</strong> Noyan (2022) demonstrou que 8 pixels do background atingem 49% de acurácia; modelo caiu de 99% para 31% em imagens in-the-wild.</li>
+      <li><div class="d"></div><strong>Sem validação em campo real:</strong> imagens outdoor têm fundo verde, iluminação variável, oclusão parcial: domínio completamente diferente do laboratorial.</li>
+      <li><div class="d"></div><strong>Distribution shift grayscale:</strong> treinamento em escala de cinza e inferência em RGB causou colapso total (8,90%).</li>
+    </ul>
+    <div class="lbl" style="margin-bottom:8px;">Mitigações e próximos passos</div>
+    <div class="c3" style="gap:12px; flex-shrink:0;">
+      <div class="al al-b" style="font-size:15pt;">
+        <strong>ExG Segmentation:</strong> remove fundo via 2G−R−B &gt; 0,1. Resultado: 77,03%, menor que color mas mais robusto a variações de background.
+      </div>
+      <div class="al al-gr" style="font-size:15pt;">
+        <strong>Data augmentation:</strong> flip, rotação ±15°, ColorJitter durante treino, sem simular fundo real de campo mas aumentando a diversidade.
+      </div>
+      <div class="al al-o" style="font-size:15pt;">
+        <strong>Sprint 3:</strong> avaliar generalização em dataset de campo real para medir degradação fora do domínio PlantVillage.
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S14: CRONOGRAMA ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Cronograma</span><span class="hd-num">14 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd" style="justify-content:center;">
+    <div class="tl">
+      <div class="tlr">
+        <div class="tls done">Sprint 1</div>
+        <div class="tlc">
+          <span class="tldt">Mar 2026 ✅</span>
+          <div class="tltt">Fundamentos e Proposta</div>
+          <div class="tldd">Revisão da literatura · Dataset PlantVillage · Pipeline inicial · Objetivos definidos · Apresentação (7 slides)</div>
+        </div>
+      </div>
+      <div class="tlr">
+        <div class="tls active">Sprint 2</div>
+        <div class="tlc active">
+          <span class="tldt" style="color:var(--or);">Mai 2026 🔄</span>
+          <div class="tltt">Implementação e Resultados Intermediários</div>
+          <div class="tldd">ResNet-18 + Ray cluster + Ensemble stacking · Escalabilidade forte e fraca · Métricas empíricas · Esta apresentação</div>
+        </div>
+      </div>
+      <div class="tlr">
+        <div class="tls next">Sprint 3</div>
+        <div class="tlc">
+          <span class="tldt">Jun 2026</span>
+          <div class="tltt">Finalização, Avaliação e Entrega</div>
+          <div class="tldd">Fine-tuning Layer3+Layer4 · Avaliação em dataset de campo real · Análise por classe · Relatório final · GitHub público · Pitch (3–5 min)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S15: CONCLUSÕES ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Conclusões Intermediárias</span><span class="hd-num">15 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd" style="gap:14px;">
+    <div class="c3" style="flex-shrink:0;">
+      <div class="stat"><div class="sn">94,78%</div><div class="sl">acurácia · color · 38 classes</div></div>
+      <div class="stat"><div class="sn">1,41×</div><div class="sl">speedup Ray · 2 nós</div></div>
+      <div class="stat"><div class="sn">+0,52 pp</div><div class="sl">ensemble stacking vs. melhor individual</div></div>
+    </div>
+    <div class="lbl">O que foi alcançado na Sprint 2</div>
+    <ul class="bul">
+      <li><div class="d"></div>Acurácia de 94,78% em 38 classes (color), meta de qualidade atingida com backbone congelado e apenas 19.494 parâmetros treináveis</li>
+      <li><div class="d"></div>Stacking color+segmented supera o melhor modelo individual em +0,52 pp, comparação metodologicamente justa entre modelos de mesma entrada</li>
+      <li><div class="d"></div>Speedup Ray: 1,41× (2 nós) · DataLoader: 2,05× (4 workers) · Escalabilidade fraca: ~100% (embarassingly parallel)</li>
+    </ul>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S16: REFERÊNCIAS ══ -->
+<div class="slide">
+  <div class="hd"><span class="hd-title">Referências</span><span class="hd-num">16 / 17</span></div>
+  <div class="acc"></div>
+  <div class="bd">
+    <div class="c2" style="flex:1; gap:20px;">
+      <ol class="rfl">
+        <li>HUGHES, D. P.; SALATHÉ, M. An open access repository of images on plant health to enable mobile disease diagnostics. <em>arXiv</em>:1511.08060, 2015.</li>
+        <li>MOHANTY, S. P.; HUGHES, D. P.; SALATHÉ, M. Using deep learning for image-based plant disease detection. <em>Frontiers in Plant Science</em>, v. 7, p. 1419, 2016.</li>
+        <li>HE, K. et al. Deep residual learning for image recognition. <em>IEEE CVPR</em>, p. 770–778, 2016.</li>
+        <li>SHOAIB, M. et al. An advanced deep learning models-based plant disease detection: a review of recent research. <em>Frontiers in Plant Science</em>, v. 14, 2023. DOI: 10.3389/fpls.2023.1158933</li>
+      </ol>
+      <ol class="rfl" style="counter-reset:rc 4;">
+        <li>NOYAN, M. A. Uncovering bias in the PlantVillage dataset. <em>arXiv</em>:2206.04374, 2022.</li>
+        <li>BARBEDO, J. G. A. Deep learning applied to plant pathology: the problem of data representativeness. <em>Tropical Plant Pathology</em>, v. 47, p. 85–94, 2022.</li>
+        <li>FAO. <em>The State of Food and Agriculture 2021.</em> Food and Agriculture Organization of the United Nations, 2021.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="ft"><span>The Green Grid · Classificação Distribuída de Doenças Vegetais</span><span>Sprint 2 · Grupo 12 · 2026.1</span></div>
+</div>
+
+<!-- ══ S17: OBRIGADO ══ -->
+<div class="slide" style="justify-content:center;align-items:center;">
+  <div style="text-align:center;padding:36px;">
+    <div style="font-size:66pt;margin-bottom:16px;">🌿</div>
+    <div style="font-size:38pt;font-weight:900;color:var(--g1);margin-bottom:10px;">Obrigado!</div>
+    <div style="font-size:20pt;color:var(--tm);margin-bottom:26px;">The Green Grid · Sprint 2 · Grupo 12 · 2026.1</div>
+    <div style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;">
+      <span class="chip" style="font-size:16pt;padding:6px 16px;">Arthur Clemente</span>
+      <span class="chip" style="font-size:16pt;padding:6px 16px;">Diego Moreira</span>
+      <span class="chip" style="font-size:16pt;padding:6px 16px;">Felipe Vilhena</span>
+      <span class="chip" style="font-size:16pt;padding:6px 16px;">Iago Fereguetti</span>
+      <span class="chip" style="font-size:16pt;padding:6px 16px;">Luan Carrieiros</span>
+      <span class="chip" style="font-size:16pt;padding:6px 16px;">Lucas Hauck</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
