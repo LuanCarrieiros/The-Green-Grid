@@ -9,6 +9,7 @@
 #                    rode no head: python train.py --address=auto
 # =============================================================================
 
+import os
 import time
 import argparse
 from pathlib import Path
@@ -78,30 +79,7 @@ CONFIG = {
 }
 
 
-class PlantVillageDataset(Dataset):
-    def __init__(self, split_file, data_dir, class_to_idx, transform=None):
-        self.data_dir     = Path(data_dir)
-        self.transform    = transform
-        self.class_to_idx = class_to_idx
-        self.samples      = []
-        with open(split_file) as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                parts = line.split('/')
-                class_name = parts[2]
-                label = class_to_idx[class_name]
-                self.samples.append((line, label))
-
-    def __len__(self): return len(self.samples)
-
-    def __getitem__(self, idx):
-        rel_path, label = self.samples[idx]
-        img = Image.open(self.data_dir / rel_path).convert('RGB')
-        if self.transform:
-            img = self.transform(img)
-        return img, label
+from dataset import PlantVillageDataset  # noqa: E402 — importado aqui para multiprocessing picklar pelo modulo correto
 
 
 # =============================================================================
@@ -110,7 +88,7 @@ class PlantVillageDataset(Dataset):
 # Nivel 2 (paralelo CPU): DataLoader com num_workers processos paralelos
 # Nivel 1 (paralelo GPU): CUDA processa cada batch em paralelo nos cores
 # =============================================================================
-@ray.remote(num_gpus=0.33)
+@ray.remote
 class ModelTrainer:
 
     def __init__(self, version, config):
@@ -125,6 +103,8 @@ class ModelTrainer:
         self.version = version
         self.config  = config
         self.device  = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        Path(config['ckpt_dir']).mkdir(parents=True, exist_ok=True)
 
         data_dir   = Path(config['data_dir'])
         splits_dir = Path(config['splits_dir'])
@@ -148,9 +128,6 @@ class ModelTrainer:
             transforms.ToTensor(),
             transforms.Normalize(mean, std),
         ])
-
-        # Importa dataset localmente no actor (cada no tem sua copia)
-        from train import PlantVillageDataset
 
         train_ds = PlantVillageDataset(splits_dir / f'{version}_train.txt', data_dir, config['class_to_idx'], transform=train_tf)
         test_ds  = PlantVillageDataset(splits_dir / f'{version}_test.txt',  data_dir, config['class_to_idx'], transform=eval_tf)
@@ -275,18 +252,118 @@ if __name__ == '__main__':
     parser.add_argument('--address', default=None,
                         help='Endereco do cluster Ray (ex: auto ou IP:6379). '
                              'Omitir para rodar em modo local.')
+    parser.add_argument('--sequential', action='store_true',
+                        help='Treinar modelos em sequencia (mede T_seq para calculo de speedup).')
+    parser.add_argument('--benchmark-workers', action='store_true',
+                        help='Mede speedup de pré-processamento com num_workers=0,1,2,4,8.')
     args = parser.parse_args()
 
     torch.manual_seed(SEED)
     np.random.seed(SEED)
 
+    # funções de timing usadas pelo benchmark e pelo treino
+    TIMING_FILE = CKPT_DIR / 'timing.json'
+
+    def _load_timing():
+        import json
+        if TIMING_FILE.exists():
+            return json.loads(TIMING_FILE.read_text())
+        return {}
+
+    def _save_timing(key, value):
+        import json
+        t = _load_timing()
+        t[key] = value
+        TIMING_FILE.write_text(json.dumps(t, indent=2))
+
+    # -------------------------------------------------------------------------
+    # Benchmark de workers — roda antes de qualquer outra coisa se solicitado
+    # -------------------------------------------------------------------------
+    if args.benchmark_workers:
+        import json
+        print('\n' + '=' * 64)
+        print('BENCHMARK — Escalabilidade de Pre-processamento (DataLoader)')
+        print('=' * 64)
+        print(f'Dataset  : color_train.txt  ({sum(1 for _ in open(SPLITS_DIR / "color_train.txt"))} imagens)')
+        print(f'Batches  : 60 batches de {BATCH_SIZE} imagens  (~{60*BATCH_SIZE} imagens no total)')
+        print(f'CPUs     : {os.cpu_count()} logicas disponiveis\n')
+
+        import os as _os
+        eval_tf_bm = transforms.Compose([
+            transforms.Resize((IMG_SIZE, IMG_SIZE)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ])
+        bm_ds = PlantVillageDataset(
+            SPLITS_DIR / 'color_train.txt', DATA_DIR, CLASS_TO_IDX, transform=eval_tf_bm)
+
+        DEVICE_BM = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model_bm  = build_model_local(DEVICE_BM)
+        model_bm.train()
+        criterion_bm = nn.CrossEntropyLoss()
+        optim_bm     = optim.Adam(model_bm.fc.parameters(), lr=LR)
+
+        N_BATCHES   = 60
+        worker_configs = [0, 1, 2, 4, 8]
+        results_bm  = {}
+
+        for nw in worker_configs:
+            loader = DataLoader(bm_ds, batch_size=BATCH_SIZE, shuffle=True,
+                                num_workers=nw,
+                                pin_memory=(DEVICE_BM.type == 'cuda'),
+                                persistent_workers=(nw > 0))
+            # aquece — 1 batch descartado para excluir overhead de inicializacao
+            for imgs, labels in loader:
+                imgs.to(DEVICE_BM); break
+
+            t0 = time.time()
+            for i, (imgs, labels) in enumerate(loader):
+                if i >= N_BATCHES:
+                    break
+                imgs, labels = imgs.to(DEVICE_BM), labels.to(DEVICE_BM)
+                optim_bm.zero_grad()
+                loss = criterion_bm(model_bm(imgs), labels)
+                loss.backward()
+                optim_bm.step()
+            elapsed = time.time() - t0
+            results_bm[nw] = elapsed
+            print(f'  num_workers={nw:2d}  →  {elapsed:.1f}s  '
+                  f'({N_BATCHES*BATCH_SIZE/elapsed:.0f} imgs/s)', flush=True)
+
+        base = results_bm[1]
+        print()
+        print(f'  {"workers":>10}  {"tempo":>8}  {"speedup":>8}  {"eficiencia":>12}')
+        print(f'  {"-"*46}')
+        for nw, t in results_bm.items():
+            speedup = base / t
+            eff     = (speedup / nw * 100) if nw > 0 else float('nan')
+            eff_str = f'{eff:.1f}%' if nw > 0 else '—'
+            print(f'  {nw:>10}  {t:>7.1f}s  {speedup:>8.2f}x  {eff_str:>12}')
+
+        timing = _load_timing()
+        timing['workers_benchmark'] = {str(k): round(v, 2) for k, v in results_bm.items()}
+        TIMING_FILE.write_text(json.dumps(timing, indent=2))
+        print(f'\nResultado salvo em {TIMING_FILE}')
+        print('=' * 64)
+        ray.shutdown()
+        import sys; sys.exit(0)
+
     # -------------------------------------------------------------------------
     # Nivel 3: inicializa cluster Ray
     # -------------------------------------------------------------------------
+    _runtime_env = {
+        "working_dir": str(BASE_DIR),
+        "excludes": [
+            "PlantVillage-completo/", "checkpoints/", "results/",
+            ".venv/", "__pycache__/", "apresentacoes/", "docs/",
+            "*.png", "*.jpg", "*.pt", "*.pkl", "*.json",
+        ],
+    }
     if args.address:
-        ray.init(address=args.address, ignore_reinit_error=True)
+        ray.init(address=args.address, ignore_reinit_error=True,
+                 runtime_env=_runtime_env)
     else:
-        ray.init(ignore_reinit_error=True)
+        ray.init(ignore_reinit_error=True, runtime_env=_runtime_env)
 
     nodes = ray.nodes()
     resources = ray.cluster_resources()
@@ -297,7 +374,10 @@ if __name__ == '__main__':
         cpus   = n['Resources'].get('CPU', 0)
         gpus   = n['Resources'].get('GPU', 0)
         print(f'  [{status}] {addr}  CPUs={cpus:.0f}  GPUs={gpus:.0f}')
-    print(f'Total — CPUs: {resources.get("CPU",0):.0f}  GPUs: {resources.get("GPU",0):.0f}\n')
+    total_gpus = resources.get('GPU', 0)
+    print(f'Total — CPUs: {resources.get("CPU",0):.0f}  GPUs: {total_gpus:.0f}')
+    print(f'Actors planejados: {len(VERSIONS)}  |  GPUs disponiveis: {total_gpus:.0f}  |  '
+          f'Simultaneos possiveis: {min(len(VERSIONS), int(total_gpus))}\n')
 
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if DEVICE.type == 'cuda':
@@ -362,14 +442,34 @@ if __name__ == '__main__':
             h = torch.load(CKPT_DIR / f'model_{ver}_DONE.pt', map_location='cpu', weights_only=False)
             histories[ver] = h
             print(f'  [{ver}] melhor val_acc: {max(h["val_acc"]):.4f}')
+    elif args.sequential:
+        print('\nIniciando treino SEQUENCIAL dos 3 modelos (baseline para speedup)...')
+        t_start   = time.time()
+        histories = {}
+        for ver in VERSIONS:
+            t_ver   = time.time()
+            trainer = ModelTrainer.options(num_gpus=1).remote(ver, CONFIG)
+            h       = ray.get(trainer.train.remote())
+            histories[ver] = h
+            print(f'  [{ver}] concluido em {(time.time()-t_ver)/60:.1f} min | '
+                  f'melhor val_acc: {h["best_val_acc"]:.4f}')
+        elapsed_seq = time.time() - t_start
+        _save_timing('t_seq', elapsed_seq)
+        print(f'\nTreino sequencial concluido em {elapsed_seq/60:.1f} min')
     else:
         print('\nIniciando treino paralelo dos 3 modelos (Ray)...')
         t_start  = time.time()
-        trainers = {ver: ModelTrainer.remote(ver, CONFIG) for ver in VERSIONS}
-        futures  = [trainers[ver].train.remote() for ver in VERSIONS]
-        results  = ray.get(futures)
-        histories = dict(zip(VERSIONS, results))
+        trainers = {ver: ModelTrainer.options(num_gpus=1).remote(ver, CONFIG) for ver in VERSIONS}
+        pending  = {trainers[ver].train.remote(): ver for ver in VERSIONS}
+        histories = {}
+        while pending:
+            done, _ = ray.wait(list(pending.keys()), num_returns=1)
+            ref = done[0]
+            ver = pending.pop(ref)
+            histories[ver] = ray.get(ref)
+            ray.kill(trainers[ver])  # libera GPU imediatamente para o proximo actor
         elapsed  = time.time() - t_start
+        _save_timing('t_par', elapsed)
         print(f'\nTreino concluido em {elapsed/60:.1f} min')
         for ver, h in histories.items():
             print(f'  {ver:12s} melhor val_acc: {h["best_val_acc"]:.4f}')
@@ -531,9 +631,11 @@ if __name__ == '__main__':
 
         train_ds_color = PlantVillageDataset(
             SPLITS_DIR / 'color_train.txt', DATA_DIR, CLASS_TO_IDX, transform=eval_tf)
+        # num_workers=2 para stacking: evita esgotamento de handles do SO (WinError 1450)
+        # com 3 modelos em memoria + DataLoader workers o uso de handles fica alto
         train_loader_meta = DataLoader(
             train_ds_color, batch_size=BATCH_SIZE, shuffle=False,
-            num_workers=NUM_WORKERS, pin_memory=True, persistent_workers=True)
+            num_workers=2, pin_memory=(DEVICE.type == 'cuda'), persistent_workers=True)
         n_meta_batches = len(train_loader_meta)
 
         for ver in VERSIONS:
@@ -603,7 +705,7 @@ if __name__ == '__main__':
                 SPLITS_DIR / 'color_train.txt', DATA_DIR, CLASS_TO_IDX, transform=eval_tf)
             train_loader_meta = DataLoader(
                 train_ds_color, batch_size=BATCH_SIZE, shuffle=False,
-                num_workers=NUM_WORKERS, pin_memory=True, persistent_workers=True)
+                num_workers=2, pin_memory=(DEVICE.type == 'cuda'), persistent_workers=True)
             n_meta_batches = len(train_loader_meta)
             for ver in CS_VERSIONS:
                 model = best_models[ver]
@@ -738,5 +840,38 @@ if __name__ == '__main__':
         else:
             print('Stacking color+seg: NAO — nao supera o melhor modelo individual.')
     print('=' * 64)
+
+    # -------------------------------------------------------------------------
+    # Escalabilidade — speedup e eficiencia (se timing disponivel)
+    # -------------------------------------------------------------------------
+    timing = _load_timing()
+    if 't_par' in timing and 't_seq' in timing:
+        t_par = timing['t_par']
+        t_seq = timing['t_seq']
+        speedup    = t_seq / t_par
+        efficiency = speedup / len(VERSIONS)
+        print()
+        print('=' * 64)
+        print('ESCALABILIDADE')
+        print('=' * 64)
+        print(f'  T sequencial  : {t_seq/60:.1f} min')
+        print(f'  T paralelo    : {t_par/60:.1f} min')
+        print(f'  Speedup       : {speedup:.2f}x  ({len(VERSIONS)} workers)')
+        print(f'  Eficiencia    : {efficiency*100:.1f}%')
+        print('=' * 64)
+    elif 't_par' in timing:
+        t_par = timing['t_par']
+        t_seq_est = t_par * len(VERSIONS)
+        speedup_est = t_seq_est / t_par
+        print()
+        print('=' * 64)
+        print('ESCALABILIDADE (T_seq estimado)')
+        print('=' * 64)
+        print(f'  T paralelo    : {t_par/60:.1f} min  (medido)')
+        print(f'  T seq estimado: {t_seq_est/60:.1f} min  (3 x T_par)')
+        print(f'  Speedup est.  : {speedup_est:.2f}x')
+        print(f'  Eficiencia    : {(speedup_est/len(VERSIONS))*100:.1f}%')
+        print('  Para medir T_seq real: delete os DONE.pt e rode com --sequential')
+        print('=' * 64)
 
     ray.shutdown()
